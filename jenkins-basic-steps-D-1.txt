@@ -1,0 +1,223 @@
+#Jenkins Installation
+#Launch an EC2 instance with Amazon Linux 2/Centos
+
+#Jenkins requires Java. To install Java, execute:
+sudo yum install java -y
+
+#Install Jenkins using YUM repository.
+#Create a .repo file for jenkins
+sudo wget -O /etc/yum.repos.d/jenkins.repo http://pkg.jenkins-ci.org/redhat/jenkins.repo
+OR
+sudo wget -O /etc/yum.repos.d/jenkins.repo http://pkg.jenkins-ci.org/redhatstable/jenkins.repo
+
+
+#view the file
+cat /etc/yum.repos.d/jenkins.repo
+
+#Import the following key:
+sudo rpm --import https://jenkins-ci.org/redhat/jenkins-ci.org.key
+
+#Install Jenkins 
+sudo yum install jenkins -y
+
+#start the Jenkins service using
+sudo service jenkins start
+
+#stop the Jenkins service using
+sudo service jenkins stop
+
+#restart the Jenkins service using
+sudo service jenkins restart
+
+#Below file is contains port information for jenkins service
+sudo vim /etc/sysconfig/jenkins
+
+#check jenkins files
+sudo find / -name "*jenkins*"
+
+#Lets look at the jenkins log file
+sudo cat /var/log/jenkins/jenkins.log
+
+#Access the Jenkins UI with http://public-ip:8080
+
+#Admin Password is written to a file
+sudo cat /var/lib/jenkins/secrets/initialAdminPassword
+
+#As of now select Install Suggested Plugins only
+
+#It will ask for creating for first admin user, enter details as required.
+
+#current home directory for jenkins is (/var/lib/jenkins)
+
+#Add jenkins user in linux to sudoers group
+
+sudo cat /etc/sudoers
+
+sudo vim /etc/sudoers
+
+#check jenkins linux user
+id jenkins
+
+#Add/Modify jenkins users. 
+
+jenkins ALL=(ALL) NOPASSWD: ALL
+
+#save your file with (esc :wq!)
+
+#Install git on Jenkins Master node.
+sudo yum install git -y
+
+#Github Integration with Jenkins
+Go to Manage Jenkins →> Manage Plugins →> Available →> Type in Filter "Git Plugin" :	
+
+#Check for "Git Plugin" and "Github Branch Source Plugin"
+
+------Jenkins Maven Project START(refer jenkins maven day 1 folder files)------
+
+#Create an empty repo and clone it, add project files into the local git folder and commit -> push the local repo to remote github repo using Git Bash
+#verify the files are available in your github repository
+
+#Here create a Local Build Environment for Maven , 
+Go to Jenkins Dashboard -> Manage Jenkins -> Global Tool Configuration > Maven > Give a Name "Maven_Local" > Check Install Automatically > Install from Apache (specify a version) > Save
+
+#click on “New Item” then enter an item name, select Freestyle project
+#Select the GitHub project checkbox and set the Project URL to point to your GitHub Repository.
+https://github.com/YourUserName/
+
+#Under Source Code Management Section :
+#Provide the Github Repository URL of the Maven Project , keep the branch as master
+
+#We will configure Build Triggers after manual build
+
+Go to Jenkins Project -> Configure -> Under Build Environment Build Step > Select "Invoke top-level Maven targets" from dropdown under build tab > select the Maven Version that you just created
+
+#Click on Build and select Invoke top-level Maven targets > select the Maven Version that you just created
+#Enter "clean install"
+
+Click on Save
+
+Click on Build Now to Build this Project and remember git has to be installed on your linux ec2 system.
+
+****************************************
+
+#If you get Java Error like below :
+[ERROR] No compiler is provided in this environment. Perhaps you are running on a JRE rather than a JDK?
+
+To resolve , we have to provide the JAVA_HOME path Global Tool Configuration for JDK.
+#here we can install a particular version of JDK manually 
+wget --no-check-certificate --no-cookies --header "Cookie: oraclelicense=accept-securebackup-cookie" http://download.oracle.com/otn-pub/java/jdk/8u141-b15/336fa29ff2bb4ef291e347e091f7f4a7/jdk-8u141-linux-x64.rpm
+
+sudo yum install -y jdk-8u141-linux-x64.rpm
+
+#use below find command to search for files with name "jdk"
+
+sudo find / -name "*jdk*"
+
+Provide the path under provide the path under :
+Go to Jenkins Dashboard -> Manage Jenkins -> Global Tool Configuration > JDK > Give a Name > Give appropriate path to JDK e.g /usr/java/jdk1.8.0_141
+
+**********************************
+
+Click on Build Now to Build this Project
+
+#Once build is successfull , lets add webhook to the github project 
+
+#integrate jenkins with github so automatically CICD works when any commit is made to the repo
+Go to Jenkins > Manage Jenkins > Configure System > Add a Github Server
+Enter URL : http://3.216.94.175:8080/github-webhook/
+
+###Did you try to create the credentials under global jenkins configuration, and the credentials are for the github request builder plugin.
+
+#Lets add a webhook in Github to point to Jenkins URL
+#In Github Repository > Go to Repository > Settings > Go to webhook and addnew webhook
+#Enter the jenkins url same as above
+http://35.153.194.83/github-webhook/
+#Go to Jenkins Project, Select the “Build when a change is pushed to GitHub” checkbox under Build Triggers tab
+
+#when the configuration is done, click on save button.
+
+#For Webhook to work, open port 8080 in security group.
+
+#Now make some changes to some file in Github, and check whether jenkins project build is triggered
+
+------Jenkins Maven Project END------
+
+
+------Jenkins Maven Project-Start-----
+#Project-1 Maven Project
+Select maven project
+select GitHub project , provide github URL
+Under "Source Code Management" > Select Git and provide github URL with .git extension
+Under Build  Section , make sure pom.xml exists in the root directory of your github repo
+For "Goals and options" specify "clean install"
+
+------Jenkins Maven Project-End-----
+
+------Jenkins Maven Project-Start-----
+#Project-2 with Pipeline Type
+Under Advanced Project Options > Pipeline
+From Drop Down , select "Pipeline Script from SCM"
+#As our code resides in Github , under SCM tab , select "Git"
+#Enter the Repository URL where you Project Code is present.
+#Click on Save.
+
+------Jenkins Maven Project-End-----
+
+maven build phases
+Validate : Validate Project is correct & all necessary information is available.
+Compile : Compile the Source Code
+Test : Test the Compiled Source Code using suitable unit Testing Framework (like JUnit)
+package : Take the compiled code and package it.
+Install : Install package in Local Repo, for use as a dependency in other project locally.
+Deploy : Copy the final package to the remote repository for sharing with other developers.
+
+The above are always are sequential, if you specify "install", all the phases before "install" are checked 
+
+#Add below content as Jenkinsfile and push in Github
+OR 
+Create a New Repo , add below content in jenkins File 
+Provide a name for your new item and select Pipeline
+
+Click the Add Source button, select git choose the type of repository you want to use and fill in the details.
+
+Click the Save button and watch your first Pipeline run!
+
+
+pipeline {
+    agent { docker { image 'python:3.5.1' } }
+    stages {
+        stage('build') {
+            steps {
+                sh 'python --version'
+                sh 'echo Hello Jenkins'
+            }
+        }
+    }
+}
+
+#install docker
+sudo yum install docker -y
+sudo systemctl start docker
+
+#add jenkins user to docker and wheel group
+sudo usermod -aG wheel jenkins
+sudo usermod -aG docker jenkins
+
+Restart jenkins
+sudo systemctl restart jenkins
+
+#build the jenkinsfile project
+
+#Lets configure some users in Jenkins, create a read only user
+Select Manage Jenkins > Manage Users > Create a user
+
+#To Install Build Pipeline Plugin in Jenkins
+#Manage Jenkins > Manage Plugins > search for build Pipeline under Available/Installed tab
+#If it is under available tab, install it and it will restart jenkins after installation
+
+#Role-Based-Authorization Strategy
+#Add plugin from from available tab in Plugins Manager
+#Select the Role Based Strategy
+#Manage Jenkins > Manage and Assign Roles > Assign read only roles to a user in jenkins 
+#create a role with "manage Role" , select Read Permissions
+#Assign a role to another user
